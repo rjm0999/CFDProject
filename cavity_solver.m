@@ -1,5 +1,7 @@
 function [PrsMatrix, uvelMatrix, vvelMatrix] = cavity_solver(~)
 tic   %begin timer function
+clc; clear; close all;
+
 %--- Variables for file handling ---
 %--- All files are globally accessible ---
 
@@ -56,15 +58,15 @@ six    = 6.0;
 
 nmax = 500000;        % Maximum number of iterations
 iterout = 5000;       % Number of time steps between solution output
-imms = 1;             % Manufactured solution flag: = 1 for manuf. sol., = 0 otherwise
-isgs = 1;             % Symmetric Gauss-Seidel  flag: = 1 for SGS, = 0 for point Jacobi
+imms = 0;             % Manufactured solution flag: = 1 for manuf. sol., = 0 lid driven cavity
+isgs = 0;     %Set to 0 for undergraduate        % Symmetric Gauss-Seidel  flag: = 1 for SGS, = 0 for point Jacobi
 irstr = 0;            % Restart flag: = 1 for restart (file 'restart.in', = 0 for initial run
 ipgorder = 0;         % Order of pressure gradient: 0 = 2nd, 1 = 3rd (not needed)
 lim = 1;              % variable to be used as the limiter sensor (= 1 for pressure)
 
 cfl  = 0.5;      % CFL number used to determine time step
-Cx = 0.01;     	% Parameter for 4th order artificial viscosity in x
-Cy = 0.01;      	% Parameter for 4th order artificial viscosity in y
+Cx = 0.01;   %change this to see its effect % Parameter for 4th order artificial viscosity in x
+Cy = 0.01;   %change this to see its effect	% Parameter for 4th order artificial viscosity in y
 toler = 1.e-10; 	% Tolerance for iterative residual convergence
 rkappa = 0.1;   	% Time derivative preconditioning constant
 Re = 100.0;      	% Reynolds number = rho*Uinf*L/rmu
@@ -112,7 +114,7 @@ fsinxy = [1.0, 1.0, 0.0];           % MMS constant to determine sine vs. cosine
 i = 0;                       % i index (x direction)
 j = 0;                       % j index (y direction)
 k = 0;                       % k index (# of equations)
-n = 0;	                   % Iteration number index
+n = 0;	                     % Iteration number index
 
 conv = -99.9 ; % Minimum of iterative residual norms from three equations
 
@@ -127,11 +129,11 @@ ninit = 0;        	% Initial iteration number (used for restart file)
 %$$$$$$    dt(imax,jmax);        % Local time step at each node
 %$$$$$$    artviscx(imax,jmax);  % Artificial viscosity in x-direction
 %$$$$$$    artviscy(imax,jmax);  % Artificial viscosity in y-direction
-res = [0,0,0];              % Iterative residual for each equation
-resinit = [0,0,0];          % Initial iterative residual for each equation (from iteration 1)
-rL1norm = [0,0,0];          % L1 norm of discretization error for each equation
-rL2norm = [0,0,0];          % L2 norm of discretization error for each equation
-rLinfnorm = [0,0,0];        % Linfinity norm of discretization error for each equation
+%res = [0,0,0];              % Iterative residual for each equation
+%resinit = [0,0,0];          % Initial iterative residual for each equation (from iteration 1)
+%rL1norm = [0,0,0];          % L1 norm of discretization error for each equation
+%rL2norm = [0,0,0];          % L2 norm of discretization error for each equation
+%rLinfnorm = [0,0,0];        % Linfinity norm of discretization error for each equation
 rtime = -99.9;         % Variable to estimate simulation time
 dtmin = 1.0e99;        % Minimum time step for a given iteration (initialized large)
 
@@ -216,7 +218,7 @@ artviscy(:,:) = zero;
 compute_source_terms();
 
 %========== Main Loop ==========
-isConverged = 0;
+isConverged = 0;   %Initialize the Boolean variable
 
 for n = ninit:nmax
     % Calculate time step
@@ -302,7 +304,7 @@ fclose(fp1);
 fclose(fp2);
 %$$$$$$   fclose(fp6); % Uncomment for debug output (
 
-PrsMatrix = u(:,:,1);    %output arrays
+PrsMatrix = u(:,:,1);    %output arrays:u(xlocation,ylocation, for pressure), u(x,y,for u_velocity)
 uvelMatrix = u(:,:,2);
 vvelMatrix = u(:,:,3);
 toc  %end timer function
@@ -463,7 +465,7 @@ function set_boundary_conditions(~)
 global imms
 
 % This subroutine determines the appropriate BC routines to call
-if (imms==0)
+if (imms==0)         %lid driven cavity case (non mms)
     bndry();
 else
     if (imms==1)
@@ -492,6 +494,28 @@ global u
 % !************************************************************** */
 % !************ADD CODING HERE FOR INTRO CFD STUDENTS************ */
 % !************************************************************** */
+for j=1:jmax         
+    u(1,j,1)=2*u(2,j,1)-u(3,j,1);           %left wall
+    u(1,j,2)=0;
+    u(1,j,3)=0;
+
+    u(imax,j,1)=2*u(imax-1,j,1)-u(imax-2,j,1);        %right wall
+    u(imax,j,2)=0;
+    u(imax,j,3)=0;
+end
+
+for i=1:imax
+    u(i,1,1)=2*u(i,2,1)-u(i,3,1);           %bottom wall
+    u(i,1,2)=0;
+    u(i,1,3)=0;
+end
+
+for i=2:imax-1
+    u(i,jmax,1)=2*u(i,jmax-1,1)-u(i,jmax-2,1);          %top lid
+    u(i,jmax,2)=uinf;
+    u(i,jmax,3)=uinf;
+end
+
 
 
 
@@ -830,7 +854,8 @@ function [dtmin] = compute_time_step(dtmin)
 % j                        % j index (y direction)
 
 % dtvisc       % Viscous time step stability criteria (constant over domain)
-% uvel2        % Local velocity squared
+% uvel2        % Local u velocity squared
+% vvel2        % Local v velocity squared
 % beta2        % Beta squared paramete for time derivative preconditioning
 % lambda_x     % Max absolute value eigenvalue in (x,t)
 % lambda_y     % Max absolute value eigenvalue in (y,t)
@@ -845,7 +870,18 @@ global u dt
 % !************************************************************** */
 % !************ADD CODING HERE FOR INTRO CFD STUDENTS************ */
 % !************************************************************** */
-
+beta2=rkappa*vel2ref;     %% check
+dtvisc=dx*dy/(4*rmu/rho);          %const for all nodes
+for j=1:jmax
+    for i=1:imax
+        lambda_x=0.5*(abs(u(i,j,2))+sqrt(u(i,j,2)^2+4*beta2));
+        lambda_y=0.5*(abs(u(i,j,3))+sqrt(u(i,j,3)^2+4*beta2));
+        lambda_max=max([lambda_x, lambda_y]);
+        dtconv=dx/lambda_max;   %check
+        dt(i,j)=min(dtvisc,dtconv);
+    end
+end
+dtmin=cfl*min(dt, [], "all");
 
 
 
@@ -883,6 +919,53 @@ global artviscx artviscy
 % !************************************************************** */
 % !************ADD CODING HERE FOR INTRO CFD STUDENTS************ */
 % !************************************************************** */
+beta2=rkappa*vel2ref;
+lambda_x=zeros(imax,jmax);
+lambda_y=zeros(imax,jmax);
+
+for j=1:jmax
+    for i=1:imax
+        lambda_x(i,j)=0.5*(abs(u(i,j,2))+sqrt(u(i,j,2)^2+4*beta2));
+        lambda_y(i,j)=0.5*(abs(u(i,j,3))+sqrt(u(i,j,3)^2+4*beta2));
+    end
+end
+
+for j=3:jmax-2
+    for i=3:imax-2
+
+        d4pdx4=u(i+2,j,1)-4*u(i+1,j,1)+6*u(i,j,1)-4*u(i-1,j,1)+u(i-2,j,1);
+
+        artviscx(i,j)=-lambda_x(i,j)*Cx*dx^3/beta2*d4pdx4;
+
+        d4pdy4=u(i,j+2,1)-4*u(i,j+1,1)+6*u(i,j,1)-4*u(i,j-1,1)+u(i,j-2,1);
+        artviscy(i,j)=-lambda_y(i,j)*Cy*dy^3/beta2*d4pdx4;
+    end
+end
+
+for i=3:imax-2
+ artviscx(i,2)=artviscx(i,3);
+ artviscy(i,2)=artviscy(i,3);
+
+ artviscx(i,jmax-1)= artviscx(i,jmax-2);
+  artviscy(i,jmax-1)= artviscy(i,jmax-2);
+end
+
+for j=3:jmax-2
+     artviscx(2,j)=artviscx(3,j);
+     artviscy(2,j)=artviscy(3,j);
+     artviscx(imax-1,j)=artviscx(imax-2,j);
+     artviscy(imax-1,j)=artviscy(imax-2,j);
+end
+
+artviscx(2,2)=(artviscx(2,3)+artviscx(3,2) )/2;
+artviscy(2,2)=(artviscy(2,3)+artviscy(3,2) )/2;
+artviscx(2,jmax-1)=(artviscx(2,jmax-2)+artviscx(3,jmax-1) )/2;
+artviscy(2,jmax-1)=(artviscy(2,jmax-2)+artviscy(3,jmax-1) )/2;
+artviscx(imax-1,2)=(artviscx(imax-1,3)+artviscx(imax-2,2) )/2;
+artviscy(imax-1,2)=(artviscy(imax-1,3)+artviscy(imax-2,2) )/2;
+artviscx(imax-1,jmax-1)=(artviscx(imax-1,jmax-2)+artviscx(imax-2,jmax-1) )/2;
+artviscy(imax-1,jmax-1)=(artviscy(imax-1,jmax-2)+artviscy(imax-2,jmax-1) )/2;
+
 
 
 
@@ -1001,7 +1084,15 @@ global u uold artviscx artviscy dt s
 % !************************************************************** */
 % !************ADD CODING HERE FOR INTRO CFD STUDENTS************ */
 % !************************************************************** */
+beta2=rkappa*vel2ref;
 
+for j=2:jmax-1
+    for i=2:imax-1
+        u(i,j,1)=uold(i,j,1)-beta2*dt(i,j)*(rho* (uold(i+1,j,2)-uold(i-1,j,2))/(2*dx) + rho*(uold(i+1,j,3)-uold(i-1,j,3))/(2*dy) -artviscx(i,j)-artviscy(i,j)-s(i,j,1));
+        u(i,j,2)=uold(i,j,2)-dt(i,j)/rho*(  rho*uold(i,j,2)* (uold(i+1,j,2)-uold(i-1,j,2))/(2*dx) + rho*uold(i,j,3)* (uold(i,j+1,2)-uold(i,j-1,2))/(2*dy) + (uold(i+1,j,1)-uold(i-1,j,1))/(2*dx)-rmu*(uold(i+1,j,2)-2*uold(i,j,2)+uold(i-1,j,2))/dx^2 - rmu* (uold(i,j+1,2)-2*uold(i,j,2)+uold(i,j-1,2))/(2*dy) -s(i,j,2) );
+        u(i,j,3)=uold(i,j,3)-dt(i,j)/rho*(  rho*uold(i,j,2)* (uold(i+1,j,3)-uold(i-1,j,3))/(2*dx) + rho*uold(i,j,3)* (uold(i,j+1,3)-uold(i,j-1,3))/(2*dy) + (uold(i+1,j,1)-uold(i-1,j,1))/(2*dy)-rmu*(uold(i+1,j,3)-2*uold(i,j,3)+uold(i-1,j,3))/dx^2 - rmu* (uold(i,j+1,3)-2*uold(i,j,3)+uold(i,j-1,3))/(2*dy) -s(i,j,3) );
+    end
+end
 
 
 
@@ -1065,9 +1156,18 @@ global u uold dt fp1
 % !************ADD CODING HERE FOR INTRO CFD STUDENTS************ */
 % !************************************************************** */
 
+if n == 1
+    resinit(1)=sum((u(:,:,1)-uold(:,:,1)).^2,"all");  %% L2 norm formula
+    resinit(2)=sum((u(:,:,2)-uold(:,:,2)).^2,"all");
+    resinit(3)=sum((u(:,:,3)-uold(:,:,3)).^2,"all");
+    conv = 1;
+else
+    res(1)=sum((u(:,:,1)-uold(:,:,1)).^2,"all");  %% L2 norm formula
+    res(2)=sum((u(:,:,2)-uold(:,:,2)).^2,"all");
+    res(3)=sum((u(:,:,3)-uold(:,:,3)).^2,"all");
 
-
-
+    conv=min(res./resinit);
+end
 
 % Write iterative residuals every 10 iterations
 if ( (mod(n,10)==0)||(n==ninit) )
@@ -1100,13 +1200,25 @@ function Discretization_Error_Norms(rL1norm, rL2norm, rLinfnorm)
 % y        % Temporary variable for y location
 % DE   	% Discretization error (absolute value)
 
-global zero imax jmax neq imms xmax xmin ymax ymin u
+global zero imax jmax neq imms xmax xmin ymax ymin u ummsArray
 
 if imms==1
 
 % !************************************************************** */
 % !************ADD CODING HERE FOR INTRO CFD STUDENTS************ */
 % !************************************************************** */
+rL1norm(1)=sum(u(:,:,1)-ummsArray(:,:,1),"all")/(imax*jmax);
+rL1norm(2)=sum(u(:,:,2)-ummsArray(:,:,2),"all")/(imax*jmax);
+rL1norm(3)=sum(u(:,:,3)-ummsArray(:,:,3),"all")/(imax*jmax);
+
+rL2norm(1)= sqrt( sum((u(:,:,1)-ummsArray(:,:,1)).^2,"all")/(imax*jmax) );
+rL2norm(2)= sqrt( sum((u(:,:,2)-ummsArray(:,:,2)).^2,"all")/(imax*jmax) );
+rL2norm(3)= sqrt( sum((u(:,:,3)-ummsArray(:,:,3)).^2,"all")/(imax*jmax) );
+
+rLinfnorm(1)=max(u(:,:,1)-ummsArray(:,:,1),[],"all");
+rLinfnorm(2)=max(u(:,:,2)-ummsArray(:,:,2),[],"all");
+rLinfnorm(3)=max(u(:,:,3)-ummsArray(:,:,3),[],"all");
+
 
 
 
@@ -1114,3 +1226,4 @@ if imms==1
 end
 
 end
+
