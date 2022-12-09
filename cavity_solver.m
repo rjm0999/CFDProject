@@ -940,12 +940,12 @@ end
 for j=3:jmax-2
     for i=3:imax-2
         beta2 = max(rkappa*vel2ref, uvel2(i,j) + vvel2(i,j));
-        d4pdx4=(u(i+2,j,1)-4*u(i+1,j,1)+6*u(i,j,1)-4*u(i-1,j,1)+u(i-2,j,1));%/dx^4;
 
-        artviscx(i,j)=-lambda_x(i,j)*Cx*dx^3/beta2*d4pdx4;
+        d4pdx4=(u(i+2,j,1)-4*u(i+1,j,1)+6*u(i,j,1)-4*u(i-1,j,1)+u(i-2,j,1));%/dx^4;
+        artviscx(i,j)=-lambda_x(i,j)*Cx*dx^3*d4pdx4/beta2;
 
         d4pdy4=(u(i,j+2,1)-4*u(i,j+1,1)+6*u(i,j,1)-4*u(i,j-1,1)+u(i,j-2,1));%/dy^4;
-        artviscy(i,j)=-lambda_y(i,j)*Cy*dy^3/beta2*d4pdy4;
+        artviscy(i,j)=-lambda_y(i,j)*Cy*dy^3*d4pdy4/beta2;
     end
 end
 
@@ -973,10 +973,6 @@ artviscx(imax-1,2)=(artviscx(imax-1,3)+artviscx(imax-2,2))/2;
 artviscy(imax-1,2)=(artviscy(imax-1,3)+artviscy(imax-2,2))/2;
 artviscx(imax-1,jmax-1)=(artviscx(imax-1,jmax-2)+artviscx(imax-2,jmax-1))/2;
 artviscy(imax-1,jmax-1)=(artviscy(imax-1,jmax-2)+artviscy(imax-2,jmax-1))/2;
-
-
-
-
 
 end
 %************************************************************************
@@ -1169,14 +1165,14 @@ global u uold dt fp1
 % !************************************************************** */
 
 if n == 1
-    resinit(1)=sum((u(:,:,1)-uold(:,:,1)).^2,"all");  %% L2 norm formula
-    resinit(2)=sum((u(:,:,2)-uold(:,:,2)).^2,"all");
-    resinit(3)=sum((u(:,:,3)-uold(:,:,3)).^2,"all");
+    resinit(1)=sqrt(sum((u(:,:,1)-uold(:,:,1)).^2,"all"));  %% L2 norm formula
+    resinit(2)=sqrt(sum((u(:,:,2)-uold(:,:,2)).^2,"all"));
+    resinit(3)=sqrt(sum((u(:,:,3)-uold(:,:,3)).^2,"all"));
     conv = 1;
 else
-    res(1)=sum((u(:,:,1)-uold(:,:,1)).^2,"all");  %% L2 norm formula
-    res(2)=sum((u(:,:,2)-uold(:,:,2)).^2,"all");
-    res(3)=sum((u(:,:,3)-uold(:,:,3)).^2,"all");
+    res(1)=sqrt(sum((u(:,:,1)-uold(:,:,1)).^2,"all"));  %% L2 norm formula
+    res(2)=sqrt(sum((u(:,:,2)-uold(:,:,2)).^2,"all"));
+    res(3)=sqrt(sum((u(:,:,3)-uold(:,:,3)).^2,"all"));
 
     conv=min(res./resinit);
 end
