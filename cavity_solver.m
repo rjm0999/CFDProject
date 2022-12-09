@@ -28,8 +28,8 @@ global artviscy;  % Artificial viscosity in y-direction
 global ummsArray; % Array of umms values (funtion umms evaluated at all nodes)
 
 %************ Following are fixed parameters for array sizes *************
-imax = 65;   	% Number of points in the x-direction (use odd numbers only)
-jmax = 65;   	% Number of points in the y-direction (use odd numbers only)
+imax = 33;   	% Number of points in the x-direction (use odd numbers only)
+jmax = 33;   	% Number of points in the y-direction (use odd numbers only)
 neq = 3;       % Number of equation to be solved ( = 3: mass, x-mtm, y-mtm)
 %********************************************
 %***** All  variables declared here. **
@@ -495,29 +495,30 @@ global u
 % !************ADD CODING HERE FOR INTRO CFD STUDENTS************ */
 % !************************************************************** */
 for j=1:jmax         
-    u(1,j,1)=2*u(2,j,1)-u(3,j,1);           %left wall
-    u(1,j,2)=0;
-    u(1,j,3)=0;
-
-    u(imax,j,1)=2*u(imax-1,j,1)-u(imax-2,j,1);        %right wall
-    u(imax,j,2)=0;
-    u(imax,j,3)=0;
+    % left wall
+    u(1,j,1)=2*u(2,j,1)-u(3,j,1);                 % mass eqn
+    u(1,j,2)=0;                                   % x momentum eqn
+    u(1,j,3)=0;                                   % y momentum eqn
+    
+    % right wall
+    u(imax,j,1)=2*u(imax-1,j,1)-u(imax-2,j,1);    % mass eqn
+    u(imax,j,2)=0;                                % x momentum eqn
+    u(imax,j,3)=0;                                % y momentum eqn
 end
 
 for i=1:imax
-    u(i,1,1)=2*u(i,2,1)-u(i,3,1);           %bottom wall
-    u(i,1,2)=0;
-    u(i,1,3)=0;
+    % bottom wall
+    u(i,1,1)=2*u(i,2,1)-u(i,3,1);                 % mass eqn
+    u(i,1,2)=0;                                   % x momentum eqn
+    u(i,1,3)=0;                                   % y momentum eqn
 end
 
 for i=2:imax-1
-    u(i,jmax,1)=2*u(i,jmax-1,1)-u(i,jmax-2,1);          %top lid
-    u(i,jmax,2)=uinf;
-    u(i,jmax,3)=uinf;
-end
-
-
-
+    % Lid
+    u(i,jmax,1)=2*u(i,jmax-1,1)-u(i,jmax-2,1);    % mass eqn
+    u(i,jmax,2)=uinf;                             % x momentum eqn
+    u(i,jmax,3)=uinf;                             % y momentum eqn
+end                                                                                                             
 
 end
 %************************************************************************
@@ -870,20 +871,23 @@ global u dt
 % !************************************************************** */
 % !************ADD CODING HERE FOR INTRO CFD STUDENTS************ */
 % !************************************************************** */
-beta2=rkappa*vel2ref;     %% check
+uvel2 = u(:,:,2).^2;
+vvel2 = u(:,:,3).^2;
+
+% beta2=rkappa*vel2ref;     %% check
 dtvisc=dx*dy/(4*rmu/rho);          %const for all nodes
-for j=1:jmax
-    for i=1:imax
-        lambda_x=0.5*(abs(u(i,j,2))+sqrt(u(i,j,2)^2+4*beta2));
-        lambda_y=0.5*(abs(u(i,j,3))+sqrt(u(i,j,3)^2+4*beta2));
-        lambda_max=max([lambda_x, lambda_y]);
-        dtconv=dx/lambda_max;   %check
+for i = 1:imax
+    for j = 1:jmax
+        beta2 = max(rkappa*vel2ref, uvel2(i,j) + vvel2(i,j));
+        lambda_x = 0.5*(sqrt(uvel2(i,j)) + sqrt(uvel2(i,j)+4*beta2));
+        lambda_y = 0.5*(sqrt(vvel2(i,j)) + sqrt(vvel2(i,j)+4*beta2));
+        lambda_max = max([lambda_x, lambda_y]);
+        dtconv=dx/lambda_max;           %check
+        % dtconv=min(dx, dy)/lambda_max;   % this is technically more robust, but if dx = dy then the other way saves a check
         dt(i,j)=min(dtvisc,dtconv);
     end
 end
 dtmin=cfl*min(dt, [], "all");
-
-
 
 end
 %************************************************************************
@@ -919,12 +923,15 @@ global artviscx artviscy
 % !************************************************************** */
 % !************ADD CODING HERE FOR INTRO CFD STUDENTS************ */
 % !************************************************************** */
-beta2=rkappa*vel2ref;
+uvel2 = u(:,:,2).^2;
+vvel2 = u(:,:,3).^2;
+
 lambda_x=zeros(imax,jmax);
 lambda_y=zeros(imax,jmax);
 
 for j=1:jmax
     for i=1:imax
+        beta2 = max(rkappa*vel2ref, uvel2(i,j) + vvel2(i,j));
         lambda_x(i,j)=0.5*(abs(u(i,j,2))+sqrt(u(i,j,2)^2+4*beta2));
         lambda_y(i,j)=0.5*(abs(u(i,j,3))+sqrt(u(i,j,3)^2+4*beta2));
     end
@@ -1084,10 +1091,14 @@ global u uold artviscx artviscy dt s
 % !************************************************************** */
 % !************ADD CODING HERE FOR INTRO CFD STUDENTS************ */
 % !************************************************************** */
-beta2=rkappa*vel2ref;
+% beta2=rkappa*vel2ref;
+uvel2 = u(:,:,2).^2;
+vvel2 = u(:,:,3).^2;
 
 for j=2:jmax-1
     for i=2:imax-1
+        beta2 = max(rkappa*vel2ref, uvel2(i,j) + vvel2(i,j));
+
         u(i,j,1)=uold(i,j,1)-beta2*dt(i,j)*(rho* (uold(i+1,j,2)-uold(i-1,j,2))/(2*dx) + rho*(uold(i+1,j,3)-uold(i-1,j,3))/(2*dy) -artviscx(i,j)-artviscy(i,j)-s(i,j,1));
         u(i,j,2)=uold(i,j,2)-dt(i,j)/rho*(  rho*uold(i,j,2)* (uold(i+1,j,2)-uold(i-1,j,2))/(2*dx) + rho*uold(i,j,3)* (uold(i,j+1,2)-uold(i,j-1,2))/(2*dy) + (uold(i+1,j,1)-uold(i-1,j,1))/(2*dx)-rmu*(uold(i+1,j,2)-2*uold(i,j,2)+uold(i-1,j,2))/dx^2 - rmu* (uold(i,j+1,2)-2*uold(i,j,2)+uold(i,j-1,2))/(2*dy) -s(i,j,2) );
         u(i,j,3)=uold(i,j,3)-dt(i,j)/rho*(  rho*uold(i,j,2)* (uold(i+1,j,3)-uold(i-1,j,3))/(2*dx) + rho*uold(i,j,3)* (uold(i,j+1,3)-uold(i,j-1,3))/(2*dy) + (uold(i+1,j,1)-uold(i-1,j,1))/(2*dy)-rmu*(uold(i+1,j,3)-2*uold(i,j,3)+uold(i-1,j,3))/dx^2 - rmu* (uold(i,j+1,3)-2*uold(i,j,3)+uold(i,j-1,3))/(2*dy) -s(i,j,3) );
