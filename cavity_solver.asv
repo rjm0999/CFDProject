@@ -1168,14 +1168,14 @@ global u uold dt fp1
 % !************************************************************** */
 
 if n == 1
-    resinit(1)=sqrt(sum(  ((u(:,:,1)-uold(:,:,1))./dt).^2  ,"all")/(imax*jmax));  %% L2 norm formula
-    resinit(2)=sqrt(sum(  ((u(:,:,2)-uold(:,:,2))./dt).^2  ,"all")/(imax*jmax));
-    resinit(3)=sqrt(sum(  ((u(:,:,3)-uold(:,:,3))./dt).^2  ,"all")/(imax*jmax));
+    resinit(1)=sqrt(sum((u(:,:,1)-uold(:,:,1))./dt.^2,"all")/(imax*jmax));  %% L2 norm formula
+    resinit(2)=sqrt(sum((u(:,:,2)-uold(:,:,2)).^2,"all")/(imax*jmax));
+    resinit(3)=sqrt(sum((u(:,:,3)-uold(:,:,3)).^2,"all")/(imax*jmax));
     conv = 1;
 else
-    res(1)=sqrt(sum( ((u(:,:,1)-uold(:,:,1))./dt).^2 ,"all")/(imax*jmax));  %% L2 norm formula
-    res(2)=sqrt(sum( ((u(:,:,2)-uold(:,:,2))./dt).^2 ,"all")/(imax*jmax));
-    res(3)=sqrt(sum( ((u(:,:,3)-uold(:,:,3))./dt).^2 ,"all")/(imax*jmax));
+    res(1)=sqrt(sum((u(:,:,1)-uold(:,:,1)).^2,"all")/(imax*jmax));  %% L2 norm formula
+    res(2)=sqrt(sum((u(:,:,2)-uold(:,:,2)).^2,"all")/(imax*jmax));
+    res(3)=sqrt(sum((u(:,:,3)-uold(:,:,3)).^2,"all")/(imax*jmax));
 
     conv=min(res./resinit);
 end
