@@ -932,20 +932,20 @@ lambda_y=zeros(imax,jmax);
 for j=1:jmax
     for i=1:imax
         beta2 = max(rkappa*vel2ref, uvel2(i,j) + vvel2(i,j));
-        lambda_x(i,j)=0.5*(abs(u(i,j,2))+sqrt(u(i,j,2)^2+4*beta2));
-        lambda_y(i,j)=0.5*(abs(u(i,j,3))+sqrt(u(i,j,3)^2+4*beta2));
+        lambda_x(i,j)=0.5*(abs(u(i,j,2))+sqrt(uvel2(i,j)+4*beta2));
+        lambda_y(i,j)=0.5*(abs(u(i,j,3))+sqrt(vvel2(i,j)+4*beta2));
     end
 end
 
 for j=3:jmax-2
     for i=3:imax-2
-
-        d4pdx4=u(i+2,j,1)-4*u(i+1,j,1)+6*u(i,j,1)-4*u(i-1,j,1)+u(i-2,j,1);
+        beta2 = max(rkappa*vel2ref, uvel2(i,j) + vvel2(i,j));
+        d4pdx4=(u(i+2,j,1)-4*u(i+1,j,1)+6*u(i,j,1)-4*u(i-1,j,1)+u(i-2,j,1))/dx^4;
 
         artviscx(i,j)=-lambda_x(i,j)*Cx*dx^3/beta2*d4pdx4;
 
-        d4pdy4=u(i,j+2,1)-4*u(i,j+1,1)+6*u(i,j,1)-4*u(i,j-1,1)+u(i,j-2,1);
-        artviscy(i,j)=-lambda_y(i,j)*Cy*dy^3/beta2*d4pdx4;
+        d4pdy4=(u(i,j+2,1)-4*u(i,j+1,1)+6*u(i,j,1)-4*u(i,j-1,1)+u(i,j-2,1))/dy^4;
+        artviscy(i,j)=-lambda_y(i,j)*Cy*dy^3/beta2*d4pdy4;
     end
 end
 
